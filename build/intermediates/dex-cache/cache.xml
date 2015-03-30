@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="C:\Users\MHanson\AppData\Local\Android\sdk\extras\android\m2repository\com\android\support\support-annotations\21.0.3\support-annotations-21.0.3.jar"
+        jumboMode="false"
+        revision="21.1.2"
+        sha1="4b74cefe1f0c1b819e7260c8627a14674e37fd35">
+        <dex dex="C:\Users\MHanson\AndroidStudioProjects\GameStarter\GameStarter\app\build\intermediates\pre-dexed\debug\support-annotations-21.0.3-2c3ea8a9cd6ac4b14bd7f5d93bfed6aa548b60a5.jar" />
+    </item>
+    <item
+        jar="C:\Users\MHanson\AndroidStudioProjects\GameStarter\GameStarter\app\build\intermediates\exploded-aar\com.android.support\support-v4\21.0.3\libs\internal_impl-21.0.3.jar"
+        jumboMode="false"
+        revision="21.1.2"
+        sha1="01ec05bfbafcc07646ba813000bf2ef11742dd03">
+        <dex dex="C:\Users\MHanson\AndroidStudioProjects\GameStarter\GameStarter\app\build\intermediates\pre-dexed\debug\internal_impl-21.0.3-9f18669e8be680e98d9abc1493c07ef20a90a549.jar" />
+    </item>
+    <item
+        jar="C:\Users\MHanson\AndroidStudioProjects\GameStarter\GameStarter\app\build\intermediates\exploded-aar\com.android.support\support-v4\21.0.3\classes.jar"
+        jumboMode="false"
+        revision="21.1.2"
+        sha1="2c91c949a45a21cdecf26e03951e46c7beec9ad8">
+        <dex dex="C:\Users\MHanson\AndroidStudioProjects\GameStarter\GameStarter\app\build\intermediates\pre-dexed\debug\classes-cee3541743283771c3c26b71271a6d6b4ce99a20.jar" />
+    </item>
+
+</items>
