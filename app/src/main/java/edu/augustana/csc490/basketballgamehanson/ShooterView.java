@@ -149,7 +149,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         playerPaint.setStrokeWidth(lineWidth * 1.5f); // set line thickness
         backboardPaint.setStrokeWidth(lineWidth); // set line thickness
         backgroundPaint.setColor(Color.WHITE); // set background color
-        //not workingfffdsa
+        //not workingfffdsafdjsakdfns
 
         startNewGame();
     }
