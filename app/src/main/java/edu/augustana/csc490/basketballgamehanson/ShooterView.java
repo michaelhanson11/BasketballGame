@@ -26,8 +26,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 {
     private static final String TAG = "ShooterView"; // for Log.w(TAG, ...)
 
-    private GameThread shooterThread; // runs the main game loop
-    private Activity mainActivity; // keep a reference to the main Activity
+    private ShooterThread shooterThread; // runs the main game loop
+    private Activity activity; // keep a reference to the main Activity
     private boolean dialogIsDisplayed = false;
 
 
@@ -35,17 +35,17 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     public static final int SCORE = 0;
 
     //variables for the game loop and tracking statistics
-    private boolean gameOver; // is the game over?
+    private boolean gameOver = true; // is the game over?
     private double timeLeft; // time remaining in seconds
     private int shotsTaken; // shots the user has taken
     private double totalElapsedTime; // elapsed seconds
 
     private Line backBoard; // start and end points of backboard
-    private int targetDistance; // target distance from left
-    private int targetBeginning; // target distance from top
-    private int targetEnd; // target bottom's distance from top
-    private int initialTargetVelocity;  // initial target speed multiplier
-    private float targetVelocity; // target speed multiplier
+    private int backboardDistance; // target distance from left
+    private int backboardBeginning; // target distance from top
+    private int backboardEnd; // target bottom's distance from top
+    private int initialBackboardVelocity;  // initial target speed multiplier
+    private float backboardVelocity; // target speed multiplier
     private int lineWidth; // width of backboard
 
     //variables for player and basketball
@@ -55,6 +55,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     private boolean basketballOnScreen; // is the basketball on the screen?
     private int basketballRadius; // basketball's radius
     private int basketballSpeed; // basketball's speed
+    private int basketballFriction;
     private int playerLength; // player's length
     private Point playerEnd; // the endpoint of the player
 
@@ -66,7 +67,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     private SoundPool soundPool; // plays sound effects
     private SparseIntArray soundMap; // maps ID's to SoundPool
 
-    private int x;
+    private float x;
     private int y;
     private int screenWidth;
     private int screenHeight;
@@ -84,7 +85,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     public ShooterView(Context context, AttributeSet attrs)
     {
         super(context, attrs);
-        mainActivity = (Activity) context;
+        activity = (Activity) context;
 
         getHolder().addCallback(this);
 
@@ -107,11 +108,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         playerPaint = new Paint();
         basketballPaint = new Paint();
         backboardPaint = new Paint();
-
-
-
         backgroundPaint = new Paint();
-        backgroundPaint.setColor(Color.GREEN);
+
         backboardPaint.setColor(Color.BLUE);
         playerPaint.setColor(Color.GREEN);
         basketballPaint.setColor(Color.RED);
@@ -132,16 +130,20 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
         basketballRadius = w / 36; // basketball radius 1/36 screen width
         basketballSpeed = w * 3 / 2; // basketball speed multiplier
+        basketballFriction = 0;
 
         lineWidth = w / 24; // backboard 1/24 screen width
 
         // configure instance variables related to the backboard
-        targetDistance = w * 7 / 8; // backboard 7/8 screen width from left
-        targetBeginning = h / 2; // distance from top 1/8 screen height
-        targetEnd = h * 7 / 8; // distance from top 7/8 screen height
-       // initialTargetVelocity = -h / 4; // initial backboard speed multipler
-        backBoard.start = new Point (targetDistance, targetBeginning);
-        backBoard.end = new Point(targetDistance, targetEnd);
+        backboardDistance = w * 9 / 10; // backboard 9/10 screen width from left
+        backboardBeginning = h / 8; // distance from top 1/8 screen height
+        backboardEnd = h * 2 / 8; // distance from top 2/8 screen height
+        initialBackboardVelocity = h / 4; // initial backboard speed multipler
+        backBoard.start = new Point (backboardDistance, backboardBeginning);
+        backBoard.end = new Point(backboardDistance, backboardEnd);
+
+        //endpoint of the player initially points horizontally
+        playerEnd = new Point(playerLength, h);
 
         // configure Paint objects for drawing game elements
         textPaint.setTextSize(w / 20); // text size 1/20 of screen width
@@ -149,20 +151,30 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         playerPaint.setStrokeWidth(lineWidth * 1.5f); // set line thickness
         backboardPaint.setStrokeWidth(lineWidth); // set line thickness
         backgroundPaint.setColor(Color.WHITE); // set background color
-        //not workingfffdsafdjsakdfns
+
 
         startNewGame();
     }
 
     public void startNewGame()
     {
-        this.x = 25;
-        this.y = 25;
+        //this.x = 25;
+        //this.y = 25;
 
+        backboardVelocity = initialBackboardVelocity;
+        timeLeft = 5;
+        basketballOnScreen = false;
+        shotsTaken = 0;
+        totalElapsedTime = 0.0;
+
+        backBoard.start.set(backboardDistance, backboardBeginning);
+        backBoard.end.set(backboardDistance, backboardEnd);
+
+        Log.w(TAG,"Starting new game, about to create thread if gameOver is true");
         if (gameOver)
         {
             gameOver = false;
-            shooterThread = new GameThread(getHolder());
+            shooterThread = new ShooterThread(getHolder());
             shooterThread.start(); // start the main game loop going
         }
     }
@@ -173,19 +185,189 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         x++;
     }
 
-    public void updateView(Canvas canvas)
-    {
-        if (canvas != null) {
-            //canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
-            canvas.drawCircle(x, y, 20, basketballPaint);
+    public void updatePositions(double elapsedTimeMS){
+        double interval = elapsedTimeMS / 1000.0;
+
+        if (basketballOnScreen) { // if there is currently a basketball on the screen
+            //update basketball position
+            basketball.x += interval * basketballVelocityX;
+            basketball.y += interval * basketballVelocityY;
+            //basketball.y += -(Math.pow(interval, 4) * basketballVelocityY);
+
+
+            // check for collision with backboard
+            if (basketball.x + basketballRadius > backboardDistance &&
+                    basketball.x - basketballRadius < backboardDistance &&
+                    basketball.y + basketballRadius > backBoard.start.y &&
+                    basketball.y - basketballRadius < backBoard.end.y) {
+
+                basketballVelocityX *= -1; //reverse the basketball's direction
+
+                //play backboard sound
+                //soundPool.play(soundMap.get(BACKBOARD_SOUND_ID), 1, 1, 1, 0, 1f);
+                //check for collisions with left and right walls
+            } else if (basketball.x + basketballRadius > screenWidth || basketball.x - basketballRadius < 0) {
+                basketballOnScreen = false; // remove basketball from screen
+                //check for collisions with top and bottom walls
+            } else if (basketball.y + basketballRadius > screenHeight || basketball.y - basketballRadius < 0) {
+                basketballOnScreen = false;
+            }
         }
+           // update the backboard's position
+           double backboardUpdate = interval * backboardVelocity;
+            backBoard.start.y += backboardUpdate;
+            backBoard.end.y += backboardUpdate;
+
+            // if the backboard hit the top or bottom, reverse direction
+            if (backBoard.start.y < 0 || backBoard.end.y > screenHeight)
+                backboardVelocity *= -1;
+
+            timeLeft -= interval;
+
+            //if the timer reached zero
+            if (timeLeft <= 0.0)
+            {
+                timeLeft = 0.0;
+                gameOver = true; // the game is over
+                shooterThread.setRunning(false);
+                stopGame();
+                //Log.w(TAG, "launching game over dialog, thread running = " + shooterThread.threadIsRunning);
+                showGameOverDialog(R.string.lose); // show the losing dialog
+            }
+
+
+
+
+    }
+
+    public void shootBasketball(MotionEvent event)
+    {
+        if (basketballOnScreen) return;
+
+        double angle = alignShot(event);
+
+        //move the basketball to start from bottom left
+        basketball.x = basketballRadius;
+        basketball.y = screenHeight * 15 / 16;
+
+        //get the x component of the total velocity
+        basketballVelocityX = (int) (basketballSpeed * Math.sin(angle));
+
+        //get the y component of the total velocity
+        basketballVelocityY = (int) (-basketballSpeed * Math.cos(angle));
+        basketballOnScreen = true; // the basketball is on the screen
+        ++shotsTaken; // increment shotsTaken
+
+
+    }// end method shootBasketball
+
+    public double alignShot(MotionEvent event){
+        //get the location of the touch in this view
+        Point touchPoint = new Point((int) event.getX(), (int) event.getY());
+
+        // compute the touch's distance from bottom left of the screen on the y-axis
+        double centerMinusY = (screenHeight - touchPoint.y);
+
+        double angle = 0; //initialize angle to 0
+
+        // calculate the angle the she makes with the horizontal
+        if(centerMinusY != 0) //prevent division by 0
+            angle = Math.atan((double) touchPoint.x / centerMinusY);
+
+        // if the touch is on the lower half of the screen
+        if (touchPoint.y > screenHeight)
+            angle += Math.PI; // adjust the angle
+
+        // calculate the endpoint of the player
+        playerEnd.x = (int) (playerLength * Math.sin(angle));
+        playerEnd.y = (int) (-playerLength * Math.cos(angle) + screenHeight);
+
+        return angle;
+    } //end method alignShot
+
+    public void drawGameElements(Canvas canvas)
+    {
+
+
+        if (canvas != null) {
+                //canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
+               //canvas.drawCircle(x, y, 20, basketballPaint);
+
+            //clear the background
+            canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
+
+            //display shots taken and time remaining
+            canvas.drawText(getResources().getString(R.string.time_remaining_shots_taken_format, shotsTaken, timeLeft), 30, 50, textPaint);
+
+
+            // if a basketball is currently on the screen, draw it
+            if(basketballOnScreen){
+                canvas.drawCircle(basketball.x, basketball.y, basketballRadius, basketballPaint);
+            }
+
+            //draw the player
+            canvas.drawLine(0, screenHeight, playerEnd.x, playerEnd.y, playerPaint);
+
+            // draw the backboard
+            canvas.drawLine(backBoard.start.x, backBoard.start.y, backBoard.end.x, backBoard.end.y, backboardPaint);
+        }
+    }// end method drawGameElements
+
+    //display an AlertDialog when the game ends
+    private void showGameOverDialog(final int messageId){
+        // DialogFragment to display stats and start new game
+        final DialogFragment gameResult =
+                new DialogFragment()
+                {
+                    // create an AlertDialog and return it
+                    @Override
+                    public Dialog onCreateDialog(Bundle bundle)
+                    {
+                        // create dialog displaying String resource for messageId
+                        AlertDialog.Builder builder =
+                                new AlertDialog.Builder(getActivity());
+                        builder.setTitle(getResources().getString(messageId));
+
+                        // display number of shots taken and total time elapsed
+                        builder.setMessage(getResources().getString(
+                                R.string.results_format, shotsTaken));
+                        builder.setPositiveButton(R.string.reset_game,
+                                new DialogInterface.OnClickListener()
+                                {
+                                    // called when "Reset Game" Button is pressed
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which)
+                                    {
+                                        dialogIsDisplayed = false;
+                                        startNewGame(); // set up and start a new game
+                                    }
+                                } // end anonymous inner class
+                        ); // end call to setPositiveButton
+
+                        return builder.create(); // return the AlertDialog
+                    } // end method onCreateDialog
+                }; // end DialogFragment anonymous inner class
+
+        // in GUI thread, use FragmentManager to display the DialogFragment
+        activity.runOnUiThread(
+                new Runnable() {
+                    public void run()
+                    {
+                        dialogIsDisplayed = true;
+                        gameResult.setCancelable(false); // modal dialog
+                        gameResult.show(activity.getFragmentManager(), "results");
+                    }
+                } // end Runnable
+        );
     }
 
     // stop the game; may be called by the BasektballGameFragment onPause
     public void stopGame()
     {
-        if (shooterThread != null)
+        if(shooterThread != null){
             shooterThread.setRunning(false);
+        }
+
     }
 
     // release resources; may be called by BasektballGameFragment onDestroy
@@ -197,6 +379,12 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     @Override
     public void surfaceCreated(SurfaceHolder holder)
     {
+//        if(!dialogIsDisplayed){
+//            shooterThread = new ShooterThread(holder); // create thread
+//            shooterThread.setRunning(true); // start game running
+//            shooterThread.start(); // start the game loop thread
+//        }
+
     }
 
     @Override
@@ -229,26 +417,28 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         @Override
     public boolean onTouchEvent(MotionEvent e)
     {
-        if (e.getAction() == MotionEvent.ACTION_DOWN)
-        {
-            this.x = (int) e.getX();
-            this.y = (int) e.getY();
-        }
+        //int action = e.getAction();
+        //if (e.getAction() == MotionEvent.ACTION_DOWN)
+        //{
+            shootBasketball(e);
+
+        //}
 
         return true;
     }
 
     // Thread subclass to run the main game loop
-    private class GameThread extends Thread
+    private class ShooterThread extends Thread
     {
         private SurfaceHolder surfaceHolder; // for manipulating canvas
         private boolean threadIsRunning = true; // running by default
 
         // initializes the surface holder
-        public GameThread(SurfaceHolder holder)
+        public ShooterThread(SurfaceHolder holder)
         {
             surfaceHolder = holder;
-            setName("GameThread");
+            setName("ShooterThread");
+            Log.e(TAG,"creating thread");
         }
 
         // changes running state
@@ -261,6 +451,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         public void run()
         {
             Canvas canvas = null;
+            long previousFrameTime = System.currentTimeMillis();
 
             while (threadIsRunning)
             {
@@ -272,12 +463,19 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                     // lock the surfaceHolder for drawing
                     synchronized(surfaceHolder)
                     {
-                        gameStep();         // update game state
-                        updateView(canvas); // draw using the canvas
+                        //gameStep();         // update game state
+                        //drawGameElements(canvas); // draw using the canvas
+                        long currentTime = System.currentTimeMillis();
+                        double elapsedTimeMS = currentTime - previousFrameTime;
+                        previousFrameTime = currentTime; // update previous time
+                        totalElapsedTime += elapsedTimeMS / 1000.0;
+                        updatePositions(10); // update game state
+                        drawGameElements(canvas); // draw using the canvas
+                        //Log.w("ShooterThread", "thread running = " + threadIsRunning);
                     }
-                    Thread.sleep(10); // if you want to slow down the action...
-                } catch (InterruptedException ex) {
-                    Log.e(TAG,ex.toString());
+                    //Thread.sleep(10); // if you want to slow down the action...
+                //} catch (InterruptedException ex) {
+                //    Log.e(TAG,ex.toString());
                 }
                 finally  // regardless if any errors happen...
                 {
