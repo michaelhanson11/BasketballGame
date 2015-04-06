@@ -8,6 +8,8 @@ import android.app.Dialog;
 import android.app.DialogFragment;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -31,12 +33,11 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     private boolean dialogIsDisplayed = false;
 
 
-    // constants for game play
-    public static final int SCORE = 0;
 
     //variables for the game loop and tracking statistics
     private boolean gameOver = true; // is the game over?
     private double timeLeft; // time remaining in seconds
+    private int score; // players score
     private int shotsTaken; // shots the user has taken
     private double totalElapsedTime; // elapsed seconds
 
@@ -64,6 +65,14 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     private int initialMiddleRimVelocity; // middle rim initial speed multiplier
     private float middleRimVelocity; // middle rim speed multiplier
 
+    // variables for point checker
+    private Line pointChecker;
+    private int pointCheckerDistance;
+    private int pointCheckerBeginning;
+    private int pointCheckerEnd;
+    private int initialPointCheckerVelocity;
+    private float pointCheckerVelocity;
+
     //variables for player and basketball
     private Point basketball; //basketball image's upper-left corner
     private int basketballVelocityX; //basketball's x velocity
@@ -71,7 +80,6 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     private boolean basketballOnScreen; // is the basketball on the screen?
     private int basketballRadius; // basketball's radius
     private int basketballSpeed; // basketball's speed
-    private int basketballFriction;
     private int playerLength; // player's length
     private Point playerEnd; // the endpoint of the player
 
@@ -96,8 +104,19 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     private Paint backgroundPaint; // Paint used to clear the drawing area
     private Paint frontRimPaint; // Paint used to draw the front of the rim
     private Paint middleRimPaint; // Paint used to draw the middle of the rim
+    private Paint pointCheckerPaint;
+
+    // Bitmap variables used for drawing images
+    private Bitmap basketballBitMap;
+    private Bitmap backgroundBitMap;
+
+
 
     private Paint myPaint;
+
+    private int peakPointX;
+    private int peakPointY;
+
 
 
     public ShooterView(Context context, AttributeSet attrs)
@@ -112,6 +131,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         basketball = new Point();
         frontRim = new Line();
         middleRim = new Line();
+        pointChecker = new Line();
 
         // initialize SoundPool to play the app's sound effects
         soundPool = new SoundPool(1, AudioManager.STREAM_MUSIC, 0);
@@ -131,12 +151,23 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         backgroundPaint = new Paint();
         frontRimPaint = new Paint();
         middleRimPaint = new Paint();
+        pointCheckerPaint = new Paint();
 
-        backboardPaint.setColor(Color.BLUE);
-        playerPaint.setColor(Color.GREEN);
+        //construct BitMaps
+        basketballBitMap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+        //source: pdclipart.org
+        basketballBitMap = basketballBitMap.createScaledBitmap(basketballBitMap, 50, 50, true);
+        backgroundBitMap = BitmapFactory.decodeResource(getResources(), R.drawable.basketballbackground);
+        backgroundBitMap = backgroundBitMap.createScaledBitmap(backgroundBitMap, 575, 865, true);
+
+
+
+        backboardPaint.setColor(Color.GRAY);
+        playerPaint.setColor(Color.BLACK);
         basketballPaint.setColor(Color.RED);
-        frontRimPaint.setColor(Color.CYAN);
-        middleRimPaint.setColor(Color.BLACK);
+        frontRimPaint.setColor(Color.RED);
+        middleRimPaint.setColor(Color.RED);
+        pointCheckerPaint.setColor(Color.BLACK);
 
     } // end ShooterView constructor
 
@@ -182,6 +213,16 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         middleRim.start = new Point(middleRimDistance, middleRimBeginning);
         middleRim.end = new Point(middleRimDistance, middleRimEnd);
 
+        // configure instance variables related to the point checker
+        pointCheckerDistance = w * 139 / 160;
+        pointCheckerBeginning = h * 511 / 2048;
+        pointCheckerEnd = backboardEnd;
+        initialPointCheckerVelocity = initialBackboardVelocity;
+        pointChecker.start = new Point(pointCheckerDistance, pointCheckerBeginning);
+        pointChecker.end = new Point(pointCheckerDistance, pointCheckerEnd);
+
+
+
         //endpoint of the player initially points horizontally
         playerEnd = new Point(playerLength, h);
 
@@ -192,6 +233,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         backboardPaint.setStrokeWidth(lineWidth); // set line thickness
         frontRimPaint.setStrokeWidth(lineWidth / 2);
         middleRimPaint.setStrokeWidth(lineWidth * 3);
+        pointCheckerPaint.setStrokeWidth(lineWidth / 16);
         backgroundPaint.setColor(Color.WHITE); // set background color
 
 
@@ -206,7 +248,9 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         backboardVelocity = initialBackboardVelocity;
         frontRimVelocity = initialFrontRimVelocity;
         middleRimVelocity = initialMiddleRimVelocity;
+        pointCheckerVelocity = initialPointCheckerVelocity;
         timeLeft = 20;
+        score = 0;
         basketballOnScreen = false;
         shotsTaken = 0;
         totalElapsedTime = 0.0;
@@ -217,6 +261,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         frontRim.end.set(frontRimDistance, frontRimEnd);
         middleRim.start.set(middleRimDistance, middleRimBeginning);
         middleRim.end.set(middleRimDistance, middleRimEnd);
+        pointChecker.start.set(pointCheckerDistance, pointCheckerBeginning);
+        pointChecker.end.set(pointCheckerDistance, pointCheckerEnd);
 
         Log.w(TAG,"Starting new game, about to create thread if gameOver is true");
         if (gameOver)
@@ -239,8 +285,23 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         if (basketballOnScreen) { // if there is currently a basketball on the screen
             //update basketball position
             basketball.x += interval * basketballVelocityX;
-            basketball.y += interval * basketballVelocityY;
-            //basketball.y += -(Math.pow(interval, 4) * basketballVelocityY);
+            if(basketball.x <= peakPointX){
+                basketball.y += interval * basketballVelocityY;
+            }else{
+                basketball.y -= interval * basketballVelocityY;
+            }
+            //basketball.y = ((-1/128)*(int)Math.pow(basketball.x - peakPointX, 2) - peakPointY);
+
+
+
+
+
+            Log.e(TAG, "x position = " + basketball.x);
+            Log.e(TAG, "y position = " + basketball.y);
+            Log.e(TAG, "x touchpoint = " + peakPointX);
+            Log.e(TAG, "y touchpoint = " + peakPointY);
+            //basketball.x += -(Math.pow(interval, 2) * basketballVelocityY);
+            //basketball.y += -(Math.pow(interval, 2) * basketballVelocityY);
 
 
             // check for collision with backboard
@@ -266,6 +327,14 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                 //check for collisions with top and bottom walls
             } else if (basketball.y + basketballRadius > screenHeight || basketball.y - basketballRadius < 0) {
                 basketballOnScreen = false;
+
+            // check for collision with point checker
+            // score increases if hit
+            } else if (basketball.x + basketballRadius > pointCheckerDistance &&
+                    basketball.x - basketballRadius < pointCheckerDistance &&
+                    basketball.y + basketballRadius > pointChecker.start.y &&
+                    basketball.y - basketballRadius < pointChecker.end.y){
+                score++;
             }
         }
            // update the backboard's position
@@ -276,10 +345,13 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
             // update the rim's position
             double frontRimUpdate = interval * frontRimVelocity;
             double middleRimUpdate = interval * middleRimVelocity;
+            double pointCheckerUpdate = interval * pointCheckerVelocity;
             frontRim.start.y += frontRimUpdate;
             frontRim.end.y += frontRimUpdate;
             middleRim.start.y += middleRimUpdate;
             middleRim.end.y += frontRimUpdate;
+            pointChecker.start.y += pointCheckerUpdate;
+            pointChecker.end.y += pointCheckerUpdate;
 
 
 
@@ -289,6 +361,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                 backboardVelocity *= -1;
                 frontRimVelocity *= -1;
                 middleRimVelocity *= -1;
+                pointCheckerVelocity *= -1;
             }
 
 
@@ -302,7 +375,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                 shooterThread.setRunning(false);
                 stopGame();
                 //Log.w(TAG, "launching game over dialog, thread running = " + shooterThread.threadIsRunning);
-                showGameOverDialog(R.string.lose); // show the losing dialog
+                showGameOverDialog(R.string.game_over); // show the losing dialog
             }
 
 
@@ -331,9 +404,13 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
     }// end method shootBasketball
 
+
+
     public double alignShot(MotionEvent event){
         //get the location of the touch in this view
         Point touchPoint = new Point((int) event.getX(), (int) event.getY());
+        peakPointX = touchPoint.x;
+        peakPointY = touchPoint.y;
 
         // compute the touch's distance from bottom left of the screen on the y-axis
         double centerMinusY = (screenHeight - touchPoint.y);
@@ -364,19 +441,24 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                //canvas.drawCircle(x, y, 20, basketballPaint);
 
             //clear the background
-            canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
+            //canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
+            canvas.drawBitmap(backgroundBitMap, 0,0, backgroundPaint);
 
             //display shots taken and time remaining
-            canvas.drawText(getResources().getString(R.string.time_remaining_shots_taken_format, shotsTaken, timeLeft), 30, 50, textPaint);
+            canvas.drawText(getResources().getString(R.string.score_time_remaining_format, score, timeLeft), 30, 50, textPaint);
 
 
             // if a basketball is currently on the screen, draw it
             if(basketballOnScreen){
-                canvas.drawCircle(basketball.x, basketball.y, basketballRadius, basketballPaint);
+
+
+                canvas.drawBitmap(basketballBitMap, basketball.x, basketball.y, basketballPaint);
+
             }
 
             //draw the player
             canvas.drawLine(0, screenHeight, playerEnd.x, playerEnd.y, playerPaint);
+
 
             // draw the backboard
             canvas.drawLine(backBoard.start.x, backBoard.start.y, backBoard.end.x, backBoard.end.y, backboardPaint);
@@ -386,6 +468,9 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
             //draw the middle of the rim
             canvas.drawLine(middleRim.start.x, middleRim.start.y, middleRim.end.x, middleRim.end.y, middleRimPaint);
+
+            //draw the point checker
+            canvas.drawLine(pointChecker.start.x, pointChecker.start.y, pointChecker.end.x, pointChecker.end.y, pointCheckerPaint);
         }
     }// end method drawGameElements
 
@@ -406,7 +491,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
                         // display number of shots taken and total time elapsed
                         builder.setMessage(getResources().getString(
-                                R.string.results_format, shotsTaken));
+                                R.string.results_format, shotsTaken, score));
                         builder.setPositiveButton(R.string.reset_game,
                                 new DialogInterface.OnClickListener()
                                 {
@@ -497,6 +582,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         //if (e.getAction() == MotionEvent.ACTION_DOWN)
         //{
             shootBasketball(e);
+
 
         //}
 

@@ -2,5 +2,12 @@
 <resources>
 
     <string name="app_name">Shooter</string>
+    <string name="results_format">Shots taken: %1$d\nScore: %2$d</string>
+    <string name="reset_game">Reset Game</string>
+    <string name="win">You win!</string>
+    <string name="game_over">Game Over!</string>
+    <string name="score_time_remaining_format">Score: %1$d\nTotal time: %2$.1f</string>
+    <string name="welcome">Welcome to Shooter!</string>
+
 
 </resources>
