@@ -286,39 +286,46 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         if (basketballOnScreen) { // if there is currently a basketball on the screen
             //update basketball position
             basketball.x += interval * basketballVelocityX;
+            basketball.y += interval *basketballVelocityY;
+            //exerts gravity on ball (archs shot)
+            basketballVelocityY += basketballSpeed / 145;
+
+            /*
             if(basketball.x < peakPointX - 50){
                 basketball.y += interval * basketballVelocityY;
             }else{
                 basketball.y -= interval * basketballVelocityY;
             }
+             */
+
             //basketball.y = -((-1/128)*(int)Math.pow(basketball.x - peakPointX, 2) - peakPointY);
 
 
 
 
 
-            Log.e(TAG, "x position = " + basketball.x);
-            Log.e(TAG, "y position = " + basketball.y);
+            Log.e(TAG, "basketball.x position = " + basketball.x);
+            Log.e(TAG, "basektball.y position = " + basketball.y);
             Log.e(TAG, "x touchpoint = " + peakPointX);
             Log.e(TAG, "y touchpoint = " + peakPointY);
 
 
             // check for collision with backboard
-            if (basketball.x + basketballRadius > backboardDistance &&
-                    basketball.x - basketballRadius < backboardDistance &&
+            if (basketball.x + basketballRadius > backboardDistance - 30 &&
+                    basketball.x - basketballRadius < backboardDistance - 30 &&
                     basketball.y + basketballRadius > backBoard.start.y &&
                     basketball.y - basketballRadius < backBoard.end.y) {
 
-                basketballVelocityX *= -1; //reverse the basketball's direction
+                basketballVelocityX *= 0; //reverse the basketball's direction
                 //play backboard sound
                 //soundPool.play(soundMap.get(BACKBOARD_SOUND_ID), 1, 1, 1, 0, 1f);
 
                 // check for collision with front of rim
-            } else if (basketball.x + basketballRadius > frontRimDistance &&
-                    basketball.x - basketballRadius < frontRimDistance &&
+            } else if (basketball.x + basketballRadius > frontRimDistance - 30 &&
+                    basketball.x - basketballRadius < frontRimDistance - 30 &&
                     basketball.y + basketballRadius > frontRim.start.y &&
                     basketball.y - basketballRadius < frontRim.end.y){
-                basketballVelocityX *= -1;
+                basketballVelocityX *= 0;
 
                 //check for collisions with left and right walls
             } else if (basketball.x + basketballRadius > screenWidth || basketball.x - basketballRadius < 0) {
@@ -356,7 +363,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
 
         // if the backboard hit the top or bottom, reverse direction
-        if (backBoard.start.y < 0 || backBoard.end.y > screenHeight){
+        if (backBoard.start.y < 0 || backBoard.end.y > screenHeight / 1.2){
             backboardVelocity *= -1;
             frontRimVelocity *= -1;
             middleRimVelocity *= -1;
