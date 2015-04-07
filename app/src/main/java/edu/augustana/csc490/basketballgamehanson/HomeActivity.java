@@ -1,5 +1,8 @@
 package edu.augustana.csc490.basketballgamehanson;
 
+/**
+ * Created by MHanson on 4/6/2015.
+ */
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -17,12 +20,12 @@ public class HomeActivity extends Activity {
 
         Button startButton = (Button) findViewById(R.id.startButton);
         startButton.setOnClickListener(new View.OnClickListener() {
-           @Override
-           public void onClick(View view) {
-               Intent startIntent = new Intent(view.getContext(), MainActivity.class);
-               startActivityForResult(startIntent, 0);
-           }
-       });
+            @Override
+            public void onClick(View view) {
+                Intent startIntent = new Intent(view.getContext(), MainActivity.class);
+                startActivityForResult(startIntent, 0);
+            }
+        });
     }
 
 }

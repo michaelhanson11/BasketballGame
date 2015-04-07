@@ -10,7 +10,7 @@
 
     <fragment
         android:id="@+id/gameStarterFragment"
-        android:name="edu.augustana.csc490.basketballgamehanson.BasektballGameFragment"
+        android:name="edu.augustana.csc490.basketballgamehanson.BasketballGameFragment"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         tools:layout="@layout/fragment_game" />

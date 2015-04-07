@@ -8,7 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-public class BasektballGameFragment extends Fragment
+public class BasketballGameFragment extends Fragment
 {
    private ShooterView mainGameView; // custom view
 

@@ -1,7 +1,8 @@
-// CannonView.java
-// Displays and controls the Cannon Game
 package edu.augustana.csc490.basketballgamehanson;
 
+/**
+ * Created by MHanson on 4/6/2015.
+ */
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -156,9 +157,9 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         //construct BitMaps
         basketballBitMap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
         //source: pdclipart.org
-        basketballBitMap = basketballBitMap.createScaledBitmap(basketballBitMap, 50, 50, true);
+        basketballBitMap = basketballBitMap.createScaledBitmap(basketballBitMap, 40, 40, true);
         backgroundBitMap = BitmapFactory.decodeResource(getResources(), R.drawable.basketballbackground);
-        backgroundBitMap = backgroundBitMap.createScaledBitmap(backgroundBitMap, 575, 865, true);
+        backgroundBitMap = backgroundBitMap.createScaledBitmap(backgroundBitMap, 575, 920, true);
 
 
 
@@ -285,12 +286,12 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         if (basketballOnScreen) { // if there is currently a basketball on the screen
             //update basketball position
             basketball.x += interval * basketballVelocityX;
-            if(basketball.x <= peakPointX){
+            if(basketball.x < peakPointX - 50){
                 basketball.y += interval * basketballVelocityY;
             }else{
                 basketball.y -= interval * basketballVelocityY;
             }
-            //basketball.y = ((-1/128)*(int)Math.pow(basketball.x - peakPointX, 2) - peakPointY);
+            //basketball.y = -((-1/128)*(int)Math.pow(basketball.x - peakPointX, 2) - peakPointY);
 
 
 
@@ -300,8 +301,6 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
             Log.e(TAG, "y position = " + basketball.y);
             Log.e(TAG, "x touchpoint = " + peakPointX);
             Log.e(TAG, "y touchpoint = " + peakPointY);
-            //basketball.x += -(Math.pow(interval, 2) * basketballVelocityY);
-            //basketball.y += -(Math.pow(interval, 2) * basketballVelocityY);
 
 
             // check for collision with backboard
@@ -314,7 +313,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                 //play backboard sound
                 //soundPool.play(soundMap.get(BACKBOARD_SOUND_ID), 1, 1, 1, 0, 1f);
 
-            // check for collision with front of rim
+                // check for collision with front of rim
             } else if (basketball.x + basketballRadius > frontRimDistance &&
                     basketball.x - basketballRadius < frontRimDistance &&
                     basketball.y + basketballRadius > frontRim.start.y &&
@@ -328,8 +327,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
             } else if (basketball.y + basketballRadius > screenHeight || basketball.y - basketballRadius < 0) {
                 basketballOnScreen = false;
 
-            // check for collision with point checker
-            // score increases if hit
+                // check for collision with point checker
+                // score increases if hit
             } else if (basketball.x + basketballRadius > pointCheckerDistance &&
                     basketball.x - basketballRadius < pointCheckerDistance &&
                     basketball.y + basketballRadius > pointChecker.start.y &&
@@ -337,46 +336,46 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                 score++;
             }
         }
-           // update the backboard's position
-           double backboardUpdate = interval * backboardVelocity;
-            backBoard.start.y += backboardUpdate;
-            backBoard.end.y += backboardUpdate;
+        // update the backboard's position
+        double backboardUpdate = interval * backboardVelocity;
+        backBoard.start.y += backboardUpdate;
+        backBoard.end.y += backboardUpdate;
 
-            // update the rim's position
-            double frontRimUpdate = interval * frontRimVelocity;
-            double middleRimUpdate = interval * middleRimVelocity;
-            double pointCheckerUpdate = interval * pointCheckerVelocity;
-            frontRim.start.y += frontRimUpdate;
-            frontRim.end.y += frontRimUpdate;
-            middleRim.start.y += middleRimUpdate;
-            middleRim.end.y += frontRimUpdate;
-            pointChecker.start.y += pointCheckerUpdate;
-            pointChecker.end.y += pointCheckerUpdate;
-
-
+        // update the rim's position
+        double frontRimUpdate = interval * frontRimVelocity;
+        double middleRimUpdate = interval * middleRimVelocity;
+        double pointCheckerUpdate = interval * pointCheckerVelocity;
+        frontRim.start.y += frontRimUpdate;
+        frontRim.end.y += frontRimUpdate;
+        middleRim.start.y += middleRimUpdate;
+        middleRim.end.y += frontRimUpdate;
+        pointChecker.start.y += pointCheckerUpdate;
+        pointChecker.end.y += pointCheckerUpdate;
 
 
-            // if the backboard hit the top or bottom, reverse direction
-            if (backBoard.start.y < 0 || backBoard.end.y > screenHeight){
-                backboardVelocity *= -1;
-                frontRimVelocity *= -1;
-                middleRimVelocity *= -1;
-                pointCheckerVelocity *= -1;
-            }
 
 
-            timeLeft -= interval;
+        // if the backboard hit the top or bottom, reverse direction
+        if (backBoard.start.y < 0 || backBoard.end.y > screenHeight){
+            backboardVelocity *= -1;
+            frontRimVelocity *= -1;
+            middleRimVelocity *= -1;
+            pointCheckerVelocity *= -1;
+        }
 
-            //if the timer reached zero
-            if (timeLeft <= 0.0)
-            {
-                timeLeft = 0.0;
-                gameOver = true; // the game is over
-                shooterThread.setRunning(false);
-                stopGame();
-                //Log.w(TAG, "launching game over dialog, thread running = " + shooterThread.threadIsRunning);
-                showGameOverDialog(R.string.game_over); // show the losing dialog
-            }
+
+        timeLeft -= interval;
+
+        //if the timer reached zero
+        if (timeLeft <= 0.0)
+        {
+            timeLeft = 0.0;
+            gameOver = true; // the game is over
+            shooterThread.setRunning(false);
+            stopGame();
+            //Log.w(TAG, "launching game over dialog, thread running = " + shooterThread.threadIsRunning);
+            showGameOverDialog(R.string.game_over); // show the losing dialog
+        }
 
 
 
@@ -437,8 +436,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
 
         if (canvas != null) {
-                //canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
-               //canvas.drawCircle(x, y, 20, basketballPaint);
+            //canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
+            //canvas.drawCircle(x, y, 20, basketballPaint);
 
             //clear the background
             //canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), backgroundPaint);
@@ -575,13 +574,13 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         }
     }
 
-        @Override
+    @Override
     public boolean onTouchEvent(MotionEvent e)
     {
         //int action = e.getAction();
         //if (e.getAction() == MotionEvent.ACTION_DOWN)
         //{
-            shootBasketball(e);
+        shootBasketball(e);
 
 
         //}
@@ -636,8 +635,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                         //Log.w("ShooterThread", "thread running = " + threadIsRunning);
                     }
                     //Thread.sleep(10); // if you want to slow down the action...
-                //} catch (InterruptedException ex) {
-                //    Log.e(TAG,ex.toString());
+                    //} catch (InterruptedException ex) {
+                    //    Log.e(TAG,ex.toString());
                 }
                 finally  // regardless if any errors happen...
                 {
