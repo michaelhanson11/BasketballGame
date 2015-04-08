@@ -79,6 +79,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
     private int basketballVelocityX; //basketball's x velocity
     private int basketballVelocityY; // basketball's y velocity
     private boolean basketballOnScreen; // is the basketball on the screen?
+    private boolean basketballHasScored; // has the basketball gone through the rim?
     private int basketballRadius; // basketball's radius
     private int basketballSpeed; // basketball's speed
     private int playerLength; // player's length
@@ -185,7 +186,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         playerLength = w / 8; // player length 1/8 screen width
 
         basketballRadius = w / 36; // basketball radius 1/36 screen width
-        basketballSpeed = w * 3 / 2; // basketball speed multiplier
+        basketballSpeed = w * (12 / 4); // basketball speed multiplier
 
 
         lineWidth = w / 24; // backboard 1/24 screen width
@@ -216,7 +217,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
         // configure instance variables related to the point checker
         pointCheckerDistance = w * 139 / 160;
-        pointCheckerBeginning = h * 511 / 2048;
+        pointCheckerBeginning = h * 15 / 64;
         pointCheckerEnd = backboardEnd;
         initialPointCheckerVelocity = initialBackboardVelocity;
         pointChecker.start = new Point(pointCheckerDistance, pointCheckerBeginning);
@@ -234,7 +235,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         backboardPaint.setStrokeWidth(lineWidth); // set line thickness
         frontRimPaint.setStrokeWidth(lineWidth / 2);
         middleRimPaint.setStrokeWidth(lineWidth * 3);
-        pointCheckerPaint.setStrokeWidth(lineWidth / 16);
+        pointCheckerPaint.setStrokeWidth(lineWidth * 3);
         backgroundPaint.setColor(Color.WHITE); // set background color
 
 
@@ -265,7 +266,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         pointChecker.start.set(pointCheckerDistance, pointCheckerBeginning);
         pointChecker.end.set(pointCheckerDistance, pointCheckerEnd);
 
-        Log.w(TAG,"Starting new game, about to create thread if gameOver is true");
+
         if (gameOver)
         {
             gameOver = false;
@@ -288,7 +289,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
             basketball.x += interval * basketballVelocityX;
             basketball.y += interval *basketballVelocityY;
             //exerts gravity on ball (archs shot)
-            basketballVelocityY += basketballSpeed / 145;
+            basketballVelocityY += basketballSpeed / 75;
 
             /*
             if(basketball.x < peakPointX - 50){
@@ -304,10 +305,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
 
 
-            Log.e(TAG, "basketball.x position = " + basketball.x);
-            Log.e(TAG, "basektball.y position = " + basketball.y);
-            Log.e(TAG, "x touchpoint = " + peakPointX);
-            Log.e(TAG, "y touchpoint = " + peakPointY);
+
 
 
             // check for collision with backboard
@@ -316,7 +314,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                     basketball.y + basketballRadius > backBoard.start.y &&
                     basketball.y - basketballRadius < backBoard.end.y) {
 
-                basketballVelocityX *= 0; //reverse the basketball's direction
+                basketballVelocityX *= -0.01; //reverse the basketball's direction
+                //basketballHasScored = true;
                 //play backboard sound
                 //soundPool.play(soundMap.get(BACKBOARD_SOUND_ID), 1, 1, 1, 0, 1f);
 
@@ -325,22 +324,34 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
                     basketball.x - basketballRadius < frontRimDistance - 30 &&
                     basketball.y + basketballRadius > frontRim.start.y &&
                     basketball.y - basketballRadius < frontRim.end.y){
-                basketballVelocityX *= 0;
-
+                basketballVelocityX *= -0.01;
                 //check for collisions with left and right walls
             } else if (basketball.x + basketballRadius > screenWidth || basketball.x - basketballRadius < 0) {
                 basketballOnScreen = false; // remove basketball from screen
+                if(basketballHasScored){
+                    score++;
+                }
                 //check for collisions with top and bottom walls
             } else if (basketball.y + basketballRadius > screenHeight || basketball.y - basketballRadius < 0) {
                 basketballOnScreen = false;
+                if(basketballHasScored){
+                    score++;
+                }
 
                 // check for collision with point checker
                 // score increases if hit
-            } else if (basketball.x + basketballRadius > pointCheckerDistance &&
-                    basketball.x - basketballRadius < pointCheckerDistance &&
-                    basketball.y + basketballRadius > pointChecker.start.y &&
-                    basketball.y - basketballRadius < pointChecker.end.y){
-                score++;
+            }
+            if (basketball.x >= pointCheckerDistance - (lineWidth * 3) &&
+                    basketball.x <= backboardDistance &&
+                    basketball.y > pointChecker.start.y &&
+                    basketball.y < pointChecker.end.y){
+                basketballHasScored = true;
+                Log.e(TAG, "basketball x = " + basketball.x);
+                Log.e(TAG, "basketball y = " + basketball.y);
+                Log.e(TAG, "basketball radius = " + basketballRadius);
+                Log.e(TAG, "pointCheckerDistance = " + (pointCheckerDistance - lineWidth * 3));
+                Log.e(TAG, "backboardDistance = " + (backboardDistance - lineWidth));
+                Log.e(TAG, "basketball has scored  = " + basketballHasScored);
             }
         }
         // update the backboard's position
@@ -363,7 +374,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
 
         // if the backboard hit the top or bottom, reverse direction
-        if (backBoard.start.y < 0 || backBoard.end.y > screenHeight / 1.2){
+        if (backBoard.start.y < 2 || backBoard.end.y > screenHeight / 1.2){
             backboardVelocity *= -1;
             frontRimVelocity *= -1;
             middleRimVelocity *= -1;
@@ -405,6 +416,7 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
         //get the y component of the total velocity
         basketballVelocityY = (int) (-basketballSpeed * Math.cos(angle));
         basketballOnScreen = true; // the basketball is on the screen
+        basketballHasScored = false;
         ++shotsTaken; // increment shotsTaken
 
 
