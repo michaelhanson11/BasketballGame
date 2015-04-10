@@ -273,8 +273,8 @@ public class ShooterView extends SurfaceView implements SurfaceHolder.Callback
 
 
                 // check for collision with front of rim
-            } else if (basketball.x + basketballRadius > frontRimDistance - 30 &&
-                    basketball.x - basketballRadius < frontRimDistance - 30 &&
+            } else if (basketball.x + basketballRadius > frontRimDistance - 40 &&
+                    basketball.x - basketballRadius < frontRimDistance - 40 &&
                     basketball.y + basketballRadius > frontRim.start.y &&
                     basketball.y - basketballRadius < frontRim.end.y){
                 basketballVelocityX *= -0.01;
